@@ -1,0 +1,27 @@
+binary_sensor:
+    - platform: mqtt
+      name: Car Home Sensor
+      state_topic: "car/home"
+      qos: 1
+      payload_on: "home"
+      payload_off: "away"
+      device_class: presence
+
+sensor:
+  - platform: template
+    sensors:
+      car_home_sensor:
+        friendly_name: Car Home Sensor
+        entity_id: binary_sensor.car_home_sensor
+        value_template: >
+            {% if is_state('binary_sensor.car_home_sensor', 'on') %}
+              Home
+            {% else %}
+              Away
+            {% endif %}
+        icon_template: >
+            {% if states('binary_sensor.car_home_sensor') == 'on' %}
+                mdi:home
+            {% else %}
+                mdi:car
+            {% endif %}
