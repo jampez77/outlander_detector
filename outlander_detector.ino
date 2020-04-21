@@ -123,13 +123,13 @@ void scanResult(int available_networks){
     }
     Serial.println(" ");
 
-    //account for any false 'away' negatives by forcing a triple check before sending that status out.
-    if(currentStatus == "away" && awayCount < 3){
+    //account for any false 'away' negatives by forcing a check before sending that status out.
+    if(currentStatus == "away" && awayCount < maxNumAwayTries){
       awayCount++;
       Serial.print("Away count: ");
       Serial.println(awayCount);
     }else{
-      //reset away count back to zero after 3.
+      //reset away count back to zero after maxNumAwayTries.
       awayCount = 0;
     }
     
@@ -140,9 +140,8 @@ void scanResult(int available_networks){
         shouldUpdate = false;
       }
 
-      //only update if status is 'home' or enough 'away' statuses have been tried
+      //only update if status is 'home' or enough 'away' statuses have been called
       if(shouldUpdate){
-        //update MQTT if this is a home status or the 3rd successive away status.
         client.publish(topic, currentStatus, true); 
         //update previous status.
         prevStatus = currentStatus;
