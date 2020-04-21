@@ -116,9 +116,11 @@ void scanResult(int available_networks){
     //build JSON of all networks to send to debug log.
     char json[512];
     Serial.println(" ");
-    serializeJsonPretty(networks, json);
     serializeJsonPretty(networks, Serial);
-    client.publish(debugTopic, json, true); 
+    if(isDebuggable){
+      serializeJsonPretty(networks, json);
+      client.publish(debugTopic, json, true); 
+    }
     Serial.println(" ");
 
     //account for any false 'away' negatives by forcing a triple check before sending that status out.
@@ -134,7 +136,7 @@ void scanResult(int available_networks){
     //we only need to update MQTT server is the status has changed.
     if(prevStatus != currentStatus){
       bool shouldUpdate = true;
-      if(currentStatus == "away" && awayCount < 3){
+      if(currentStatus == "away" && awayCount < maxNumAwayTries){
         shouldUpdate = false;
       }
 
