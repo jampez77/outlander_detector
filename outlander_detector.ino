@@ -32,12 +32,13 @@ void setup_wifi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   
-  Serial.println(WiFi.mode(WIFI_STA));
-  
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
+    digitalWrite(ledPin, LOW);
   }
+
+  digitalWrite(ledPin, HIGH);
   
   randomSeed(micros());
   
@@ -50,12 +51,18 @@ void setup_wifi() {
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
+    digitalWrite(ledPin, HIGH);
+    delay(100);
+    digitalWrite(ledPin, LOW);
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
     String clientId = "CarDetector-" + String(random(0xffff), HEX);
     if (client.connect(clientId.c_str(), mqtt_user, mqtt_password)) {
       Serial.println("connected");
-      client.publish(topic, "connected", true);  
+      client.publish(topic, "connected", true); 
+      
+      startWiFiScan();
+      digitalWrite(ledPin, HIGH);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -69,6 +76,7 @@ void reconnect() {
 
 void setup() {
   Serial.begin(115200);
+  pinMode(ledPin, OUTPUT);
   // put your setup code here, to run once:
   setup_wifi();
   client.setServer(mqtt_server, 1883);
