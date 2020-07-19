@@ -59,8 +59,10 @@ void reconnect() {
     String clientId = "CarDetector-" + String(random(0xffff), HEX);
     if (client.connect(clientId.c_str(), mqtt_user, mqtt_password)) {
       Serial.println("connected");
-      client.publish(topic, "connected", true); 
-      
+      client.publish(outputTopic, "connected", true); 
+      client.subscribe(debugTopic);
+      Serial.println("Subscribed to: ");
+      Serial.println(debugTopic);
       startWiFiScan();
       digitalWrite(ledPin, HIGH);
     } else {
@@ -80,6 +82,7 @@ void setup() {
   // put your setup code here, to run once:
   setup_wifi();
   client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
   while (!client.connected()) {
     reconnect();
   }
@@ -99,9 +102,38 @@ void startWiFiScan(){
   WiFi.scanNetworksAsync(scanResult);
 }
 
+
+void callback(char* callbackTopic, byte* message, unsigned int length) {
+
+  String messageStr;
+  
+  for (int i = 0; i < length; i++) {
+    messageStr += (char)message[i];
+  }
+
+  Serial.println(callbackTopic);
+
+  if(String(callbackTopic) == debugTopic && String(messageStr) == "true" && isDebuggable == false){
+    isDebuggable = true;
+    client.publish(outputTopic, "debugging on", true); 
+  }else if(String(callbackTopic) == debugTopic && String(messageStr) == "false" && isDebuggable == true){
+    isDebuggable = false;
+    client.publish(outputTopic, "debugging off", true); 
+  }
+
+  if(String(callbackTopic) == debugTopic && String(messageStr) == "reset"){
+    client.publish(outputTopic, "resetting", true); 
+    Serial.println("Resetting..");
+    delay(100);
+    ESP.restart();
+  }
+}
+
 void scanResult(int available_networks){
-  Serial.print("Available Networks: ");
-  Serial.println(available_networks);
+  if(isDebuggable){
+    Serial.print("Available Networks: ");
+    Serial.println(available_networks);
+  }
   if(available_networks >= 0){
     
     int carSSIDCount = 0;
@@ -121,24 +153,27 @@ void scanResult(int available_networks){
       currentStatus = "away";
     }
 
-    //build JSON of all networks to send to debug log.
-    char json[512];
-    Serial.println(" ");
-    serializeJsonPretty(networks, Serial);
-    if(isDebuggable){
-      serializeJsonPretty(networks, json);
-      client.publish(debugTopic, json, true); 
-    }
-    Serial.println(" ");
-
     //account for any false 'away' negatives by forcing a check before sending that status out.
     if(currentStatus == "away" && awayCount < maxNumAwayTries){
       awayCount++;
-      Serial.print("Away count: ");
-      Serial.println(awayCount);
+      if(isDebuggable){
+        Serial.print("Away count: ");
+        Serial.println(awayCount);
+      }
     }else{
       //reset away count back to zero after maxNumAwayTries.
       awayCount = 0;
+    }
+
+     //build JSON of all networks to send to debug log.
+    char json[512];
+    
+    if(isDebuggable){
+      Serial.println(" ");
+      serializeJsonPretty(networks, Serial);
+      serializeJsonPretty(networks, json);
+      client.publish(outputTopic, json, true); 
+      Serial.println(" ");
     }
     
     //we only need to update MQTT server is the status has changed.
@@ -150,13 +185,11 @@ void scanResult(int available_networks){
 
       //only update if status is 'home' or enough 'away' statuses have been called
       if(shouldUpdate){
-        client.publish(topic, currentStatus, true); 
+        client.publish(outputTopic, currentStatus, true); 
         //update previous status.
         prevStatus = currentStatus;
       }
     }
-
-    
     //remove scan results from memory.
     WiFi.scanDelete();
    }
