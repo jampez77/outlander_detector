@@ -92,3 +92,13 @@ For a more _interesting_ integration you can take it one step further with a sen
 Finally here is a really basic _lovelace_ card:
 
 ![Lovelace Entity Card](files/home_assistant_entity_card_config.png)
+
+## Version 1.2 - Remote Reset and Debugging Mode ##
+
+From 1.2 it is possible to remotely reset the device or enable debugging mode. This can be done an MQTT request to the `car/home/debug` topic along with the following payloads:
+
+* Remote reset added:
+  MQTT publish - `car/home/debug` with payload `reset`
+
+* Remote debugging:
+  MQTT publish - `car/home/debug` with payload of `true` or `false`
