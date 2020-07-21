@@ -17,6 +17,7 @@ const char* mqtt_server = "YOUR_MQTT_SERVER_ADDRESS";
 //The topic names to send to your MQTT broker. You don't have to change these if you don't want to.
 const char* outputTopic = "car/home";
 const char* debugTopic = "car/home/debug";
+const char* availabilityTopic = "car/home/available";
 
 //Set this to true if you want to send feedback of all WiFi network found, back to your MQTT broker.
 bool isDebuggable = false;

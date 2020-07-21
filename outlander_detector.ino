@@ -127,6 +127,19 @@ void callback(char* callbackTopic, byte* message, unsigned int length) {
     delay(100);
     ESP.restart();
   }
+
+  if(String(callbackTopic) == availabilityTopic){
+    //tell home assistant we are online if we get an availability request
+    client.publish(callbackTopic, "online", true); 
+    delay(100);
+    //update home assistant with last known status (if we have one!)
+    if(String(prevStatus).length() > 0){
+      //sending prevStatus will stop home assistant from defaultng to away
+      //after a restart.
+      client.publish(outputTopic, prevStatus, true); 
+    }
+    
+  }
 }
 
 void scanResult(int available_networks){
