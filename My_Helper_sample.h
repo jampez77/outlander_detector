@@ -30,9 +30,9 @@ const char* resetConfigTopic = "homeassistant/switch/garage/carHomeSensor/config
 String mqttResetDeviceClientId = "RstCHS";
 const char* mqttResetDeviceName = "Reset";
 
-const char* softwareVersion = "1.0";
+const char* softwareVersion = "1.3";
 const char* manufacturer = "NandPez";
-const char* model = "Mitsunishi Outlander Detector (Wemos D1)";
+const char* model = "Outlander Detector";
 
 //The maximum number of 'away' finds before we decide to set the status as 'away'
 //Increase this number if you are getting a lot of false triggers for 'away'
