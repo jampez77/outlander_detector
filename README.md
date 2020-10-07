@@ -11,6 +11,7 @@ This is essentially a WiFi scanner that will look for my car's WiFi access point
 * Arduino JSON - v6.15.1
 * PubSubClient - v2.7.0
 * ESP8266WiFi
+* ArduinoOTA
 
 **Hardware**
 
@@ -47,6 +48,8 @@ The next step is to simply plug your device in the computer, Go to `Tools -> Por
 
 For me this usually says something `dev/usbserial...`
 
+You will only need the device plugged in on your first upload, after that you should see your devices name and it's IP address in the port list.
+
 Now you just click on the upload button in the top left corner of the IDE, it's the right-facing arrow.
 
 After a bit of time compiling, the script should be uploaded to the device and begin scanning for the car.
@@ -57,7 +60,9 @@ If the upload doesn't work the most likely cause is that you forgot to rename th
 
 ## Integrating with Home Assistant ##
 
-The simplest wat to integrate with [Home Assistant](https://home-assistant.io) is to add a new `binary_sensor` to the `configuration.yaml` like this:
+The simplest way to integrate with [Home Assistant](https://home-assistant.io) is to turn on [MQTT discovery](https://www.home-assistant.io/docs/mqtt/discovery/). With this activated the device will be added automatically.
+
+Alternatively you can add a new `binary_sensor` to the `configuration.yaml` like this:
 
     binary_sensor:
     - platform: mqtt

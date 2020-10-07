@@ -1,6 +1,7 @@
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 #include "My_Helper.h"
 
@@ -48,34 +49,6 @@ void setup_wifi() {
   Serial.println(WiFi.localIP());
 }
 
-void reconnect() {
-  // Loop until we're reconnected
-  while (!client.connected()) {
-    digitalWrite(ledPin, HIGH);
-    delay(100);
-    digitalWrite(ledPin, LOW);
-    Serial.print("Attempting MQTT connection...");
-    // Attempt to connect
-    String clientId = "CarDetector-" + String(random(0xffff), HEX);
-    if (client.connect(clientId.c_str(), mqtt_user, mqtt_password)) {
-      Serial.println("connected");
-      client.publish(outputTopic, "connected", true); 
-      client.subscribe(debugTopic);
-      Serial.println("Subscribed to: ");
-      Serial.println(debugTopic);
-      startWiFiScan();
-      digitalWrite(ledPin, HIGH);
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(5000);
-    }
-  }
-}
-
-
 void setup() {
   Serial.begin(115200);
   pinMode(ledPin, OUTPUT);
@@ -83,27 +56,62 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
-  while (!client.connected()) {
-    reconnect();
+  client.setBufferSize(1024);
+
+  while(!configDetailsSent){
+    if(connectClient()){
+      sendConfigDetailsToHA();
+    }
+  }
+  
+  //Setup OTA
+  {
+    ArduinoOTA.setHostname((mqttDeviceClientId + "-" + String(ESP.getChipId())).c_str());
+
+    ArduinoOTA.onStart([]() {
+      Serial.println("Start");
+    });
+    ArduinoOTA.onEnd([]() {
+      Serial.println("\nEnd");
+    });
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    });
+    ArduinoOTA.onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
+    ArduinoOTA.begin();
   }
 }
 
 void loop() {
-  if (!client.connected()) {
-    reconnect();
+
+  //OTA client code
+  ArduinoOTA.handle();
+  
+  if (client.connected()) {
+    client.loop();
+    delay(500);
+    digitalWrite(ledPin, HIGH);
+    startWiFiScan();
+  } else {
+    connectClient();
   }
-  client.loop();
-  delay(500);
-  startWiFiScan();
 }
 
 void startWiFiScan(){
   //start a scan of available WiFi networks
+  Serial.println("Scanning WiFi Networks");
   WiFi.scanNetworksAsync(scanResult);
 }
 
 
-void callback(char* callbackTopic, byte* message, unsigned int length) {
+void callback(char* topic, byte* message, unsigned int length) {
 
   String messageStr;
   
@@ -111,42 +119,16 @@ void callback(char* callbackTopic, byte* message, unsigned int length) {
     messageStr += (char)message[i];
   }
 
-  Serial.println(callbackTopic);
+  Serial.println(topic);
 
-  if(String(callbackTopic) == debugTopic && String(messageStr) == "true" && isDebuggable == false){
-    isDebuggable = true;
-    client.publish(outputTopic, "debugging on", true); 
-  }else if(String(callbackTopic) == debugTopic && String(messageStr) == "false" && isDebuggable == true){
-    isDebuggable = false;
-    client.publish(outputTopic, "debugging off", true); 
-  }
-
-  if(String(callbackTopic) == debugTopic && String(messageStr) == "reset"){
-    client.publish(outputTopic, "resetting", true); 
-    Serial.println("Resetting..");
-    delay(100);
+  if(String(topic) == resetCommandTopic && String(messageStr) == "ON"){
     ESP.restart();
   }
 
-  if(String(callbackTopic) == availabilityTopic){
-    //tell home assistant we are online if we get an availability request
-    client.publish(callbackTopic, "online", true); 
-    delay(100);
-    //update home assistant with last known status (if we have one!)
-    if(String(prevStatus).length() > 0){
-      //sending prevStatus will stop home assistant from defaultng to away
-      //after a restart.
-      client.publish(outputTopic, prevStatus, true); 
-    }
-    
-  }
 }
 
 void scanResult(int available_networks){
-  if(isDebuggable){
-    Serial.print("Available Networks: ");
-    Serial.println(available_networks);
-  }
+  
   if(available_networks >= 0){
     
     int carSSIDCount = 0;
@@ -161,18 +143,14 @@ void scanResult(int available_networks){
       }  
     }
 
-    char* currentStatus = "home";
+    const char* currentStatus = payloadOn;
     if(carSSIDCount == 0){
-      currentStatus = "away";
+      currentStatus = payloadOff;
     }
 
     //account for any false 'away' negatives by forcing a check before sending that status out.
     if(currentStatus == "away" && awayCount < maxNumAwayTries){
       awayCount++;
-      if(isDebuggable){
-        Serial.print("Away count: ");
-        Serial.println(awayCount);
-      }
     }else{
       //reset away count back to zero after maxNumAwayTries.
       awayCount = 0;
@@ -180,14 +158,6 @@ void scanResult(int available_networks){
 
      //build JSON of all networks to send to debug log.
     char json[512];
-    
-    if(isDebuggable){
-      Serial.println(" ");
-      serializeJsonPretty(networks, Serial);
-      serializeJsonPretty(networks, json);
-      client.publish(outputTopic, json, true); 
-      Serial.println(" ");
-    }
     
     //we only need to update MQTT server is the status has changed.
     if(prevStatus != currentStatus){
@@ -198,7 +168,7 @@ void scanResult(int available_networks){
 
       //only update if status is 'home' or enough 'away' statuses have been called
       if(shouldUpdate){
-        client.publish(outputTopic, currentStatus, true); 
+        client.publish(stateTopic, currentStatus, true); 
         //update previous status.
         prevStatus = currentStatus;
       }
@@ -206,4 +176,80 @@ void scanResult(int available_networks){
     //remove scan results from memory.
     WiFi.scanDelete();
    }
+}
+
+boolean connectClient() {
+  // Loop until we're connected
+  while (!client.connected()) {
+    digitalWrite(ledPin, HIGH);
+    delay(100);
+    digitalWrite(ledPin, LOW);
+    Serial.print("Attempting MQTT connection...");
+    // Check connection
+    if (client.connect(mqttDeviceClientId.c_str(), mqtt_user, mqtt_password, availabilityTopic, 0, true, payloadNotAvailable)) {
+      // Make an announcement when connected
+      Serial.println("connected");
+      client.publish(availabilityTopic, payloadAvailable, true);
+      client.publish(stateTopic, prevStatus, true);
+
+      client.subscribe(commandTopic);
+      client.subscribe(availabilityTopic);
+      client.subscribe(resetCommandTopic);
+
+      Serial.println("Subscribed to: ");
+      Serial.println(commandTopic);
+      Serial.println(availabilityTopic);
+      Serial.println(resetCommandTopic);
+      return true;
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+      return false;
+    }
+  }
+  return true;
+}
+
+void sendConfigDetailsToHA(){
+  //Send cover entity details to home assistant on initial connection
+    //for auto discovery
+
+    DynamicJsonDocument mqttDevConfig(225);
+    mqttDevConfig["name"] = mqttDeviceClientId;
+    mqttDevConfig["mf"] = manufacturer;
+    mqttDevConfig["mdl"] = model;
+    mqttDevConfig["sw"] = softwareVersion;
+    mqttDevConfig["ids"][0] = mqttDeviceClientId;
+    mqttDevConfig["ids"][1] = mqttResetDeviceClientId;
+
+    DynamicJsonDocument mqttConfig(540);
+    mqttConfig["name"] = mqttDeviceName;
+    mqttConfig["dev_cla"] = mqttDeviceClass;
+    mqttConfig["stat_t"] = stateTopic;
+    mqttConfig["pl_on"] = payloadOn;
+    mqttConfig["pl_off"] = payloadOff;
+    mqttConfig["avty_t"] = availabilityTopic;
+    mqttConfig["uniq_id"] = mqttDeviceClientId;
+    mqttConfig["dev"] = mqttDevConfig;
+
+    char json[540];
+    serializeJsonPretty(mqttConfig, json);
+    client.publish(configTopic, json, false);
+
+    DynamicJsonDocument mqttResetConfig(505);
+    mqttResetConfig["name"] = mqttResetDeviceName;
+    mqttResetConfig["ic"] = "mdi:lock-reset";
+    mqttResetConfig["cmd_t"] = resetCommandTopic;
+    mqttResetConfig["stat_t"] = resetStateTopic;
+    mqttResetConfig["avty_t"] = availabilityTopic;
+    mqttResetConfig["uniq_id"] = mqttResetDeviceClientId;
+    mqttResetConfig["dev"] = mqttDevConfig;
+
+    char resetJson[505];
+    serializeJsonPretty(mqttResetConfig, resetJson);
+    client.publish(resetConfigTopic, resetJson, false);
+    configDetailsSent = true;
 }
