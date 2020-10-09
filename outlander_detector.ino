@@ -21,34 +21,6 @@ int awayCount = 0;
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-void setup_wifi() {
-
-  delay(10);
-  // We start by connecting to a WiFi network
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  //Set WiFi mode so we don't create an access point.
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-    digitalWrite(ledPin, LOW);
-  }
-
-  digitalWrite(ledPin, HIGH);
-  
-  randomSeed(micros());
-  
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
 void setup() {
   Serial.begin(115200);
   pinMode(ledPin, OUTPUT);
@@ -90,7 +62,6 @@ void setup() {
 }
 
 void loop() {
-
   //OTA client code
   ArduinoOTA.handle();
   
@@ -104,12 +75,67 @@ void loop() {
   }
 }
 
-void startWiFiScan(){
-  //start a scan of available WiFi networks
-  Serial.println("Scanning WiFi Networks");
-  WiFi.scanNetworksAsync(scanResult);
+void setup_wifi() {
+
+  delay(10);
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  //Set WiFi mode so we don't create an access point.
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+    digitalWrite(ledPin, LOW);
+  }
+
+  digitalWrite(ledPin, HIGH);
+  
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
 }
 
+boolean connectClient() {
+  // Loop until we're connected
+  while (!client.connected()) {
+    digitalWrite(ledPin, HIGH);
+    delay(100);
+    digitalWrite(ledPin, LOW);
+    Serial.print("Attempting MQTT connection...");
+    // Check connection
+    if (client.connect(mqttDeviceClientId.c_str(), mqtt_user, mqtt_password, availabilityTopic, 0, true, payloadNotAvailable)) {
+      // Make an announcement when connected
+      Serial.println("connected");
+      client.publish(availabilityTopic, payloadAvailable, true);
+      client.publish(stateTopic, prevStatus, true);
+
+      client.subscribe(commandTopic);
+      client.subscribe(availabilityTopic);
+      client.subscribe(resetCommandTopic);
+
+      Serial.println("Subscribed to: ");
+      Serial.println(commandTopic);
+      Serial.println(availabilityTopic);
+      Serial.println(resetCommandTopic);
+      sendConfigDetailsToHA();
+      return true;
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+      return false;
+    }
+  }
+  return true;
+}
 
 void callback(char* topic, byte* message, unsigned int length) {
 
@@ -124,7 +150,13 @@ void callback(char* topic, byte* message, unsigned int length) {
   if(String(topic) == resetCommandTopic && String(messageStr) == "ON"){
     ESP.restart();
   }
+}
 
+
+void startWiFiScan(){
+  //start a scan of available WiFi networks
+  Serial.println("Scanning WiFi Networks");
+  WiFi.scanNetworksAsync(scanResult);
 }
 
 void scanResult(int available_networks){
@@ -178,41 +210,6 @@ void scanResult(int available_networks){
    }
 }
 
-boolean connectClient() {
-  // Loop until we're connected
-  while (!client.connected()) {
-    digitalWrite(ledPin, HIGH);
-    delay(100);
-    digitalWrite(ledPin, LOW);
-    Serial.print("Attempting MQTT connection...");
-    // Check connection
-    if (client.connect(mqttDeviceClientId.c_str(), mqtt_user, mqtt_password, availabilityTopic, 0, true, payloadNotAvailable)) {
-      // Make an announcement when connected
-      Serial.println("connected");
-      client.publish(availabilityTopic, payloadAvailable, true);
-      client.publish(stateTopic, prevStatus, true);
-
-      client.subscribe(commandTopic);
-      client.subscribe(availabilityTopic);
-      client.subscribe(resetCommandTopic);
-
-      Serial.println("Subscribed to: ");
-      Serial.println(commandTopic);
-      Serial.println(availabilityTopic);
-      Serial.println(resetCommandTopic);
-      return true;
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(5000);
-      return false;
-    }
-  }
-  return true;
-}
-
 void sendConfigDetailsToHA(){
   //Send cover entity details to home assistant on initial connection
     //for auto discovery
@@ -231,6 +228,7 @@ void sendConfigDetailsToHA(){
     mqttConfig["stat_t"] = stateTopic;
     mqttConfig["pl_on"] = payloadOn;
     mqttConfig["pl_off"] = payloadOff;
+    mqttConfig["qos"] = 2;
     mqttConfig["avty_t"] = availabilityTopic;
     mqttConfig["uniq_id"] = mqttDeviceClientId;
     mqttConfig["dev"] = mqttDevConfig;

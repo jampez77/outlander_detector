@@ -41,6 +41,7 @@ int maxNumAwayTries = 5;
 //The WiFi SSID of your outlander I.E REMOTE******
 const char* carSSID = "YOUR_CARS_SSID";
 const int ledPin = D4;
+boolean configDetailsSent = false;
 
 const char* payloadAvailable = "online";
 const char* payloadNotAvailable = "offline";
