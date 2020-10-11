@@ -104,6 +104,7 @@ void setup_wifi() {
 boolean connectClient() {
   // Loop until we're connected
   while (!client.connected()) {
+    configDetailsSent = false;
     digitalWrite(ledPin, HIGH);
     delay(100);
     digitalWrite(ledPin, LOW);
@@ -112,6 +113,7 @@ boolean connectClient() {
     if (client.connect(mqttDeviceClientId.c_str(), mqtt_user, mqtt_password, availabilityTopic, 0, true, payloadNotAvailable)) {
       // Make an announcement when connected
       Serial.println("connected");
+      client.publish(availabilityTopic, "super online?", true);
       client.publish(availabilityTopic, payloadAvailable, true);
       client.publish(stateTopic, prevStatus, true);
 
@@ -123,7 +125,10 @@ boolean connectClient() {
       Serial.println(commandTopic);
       Serial.println(availabilityTopic);
       Serial.println(resetCommandTopic);
-      sendConfigDetailsToHA();
+      
+      while(!configDetailsSent){
+        sendConfigDetailsToHA();
+      }
       return true;
     } else {
       Serial.print("failed, rc=");
@@ -146,6 +151,13 @@ void callback(char* topic, byte* message, unsigned int length) {
   }
 
   Serial.println(topic);
+
+  if(String(topic) == availabilityTopic){
+      configDetailsSent = false;
+      while(!configDetailsSent){
+        sendConfigDetailsToHA();
+      }
+  }
 
   if(String(topic) == resetCommandTopic && String(messageStr) == "ON"){
     ESP.restart();
@@ -215,7 +227,7 @@ void sendConfigDetailsToHA(){
     //for auto discovery
 
     DynamicJsonDocument mqttDevConfig(225);
-    mqttDevConfig["name"] = mqttDeviceClientId;
+    mqttDevConfig["name"] = mqttDeviceName;
     mqttDevConfig["mf"] = manufacturer;
     mqttDevConfig["mdl"] = model;
     mqttDevConfig["sw"] = softwareVersion;
@@ -228,7 +240,7 @@ void sendConfigDetailsToHA(){
     mqttConfig["stat_t"] = stateTopic;
     mqttConfig["pl_on"] = payloadOn;
     mqttConfig["pl_off"] = payloadOff;
-    mqttConfig["qos"] = 2;
+    mqttConfig["qos"] = 1;
     mqttConfig["avty_t"] = availabilityTopic;
     mqttConfig["uniq_id"] = mqttDeviceClientId;
     mqttConfig["dev"] = mqttDevConfig;
