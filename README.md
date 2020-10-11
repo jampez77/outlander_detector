@@ -107,3 +107,13 @@ From 1.2 it is possible to remotely reset the device or enable debugging mode. T
 
 * Remote debugging:
   MQTT publish - `car/home/debug` with payload of `true` or `false`
+
+## Version 1.3 - Automatic Home Assistant integration ##
+
+* Added MQTT config script so that binary_sensor and reset switch is discovered automatically when it initially connects to broker.
+
+* Arduino OTA for wireless code updates.
+
+## Version 1.4 - Bug fixes ##
+
+* Fixed bug with device being unavailable in Home Assistant following system restart.
