@@ -64,6 +64,11 @@ void setup() {
 void loop() {
   //OTA client code
   ArduinoOTA.handle();
+
+  //attempt connection to WiFi if we don't have it
+  if(!espClient.connected()){
+    setup_wifi();
+  }
   
   if (client.connected()) {
     client.loop();

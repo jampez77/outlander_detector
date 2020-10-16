@@ -98,7 +98,17 @@ Finally here is a really basic _lovelace_ card:
 
 ![Lovelace Entity Card](files/home_assistant_entity_card_config.png)
 
-## Version 1.2 - Remote Reset and Debugging Mode ##
+## Changelog ##
+
+### Version 1.1 - Added LED status indicator ###
+
+* Solid light = No WiFi connection
+* Flashing Light = no MQTT connection
+* No light = connection established
+
+Moved WiFi scan initialisation and MQTT status publish so it can be called in loop and when MQTT reconnects
+
+### Version 1.2 - Remote Reset and Debugging Mode ###
 
 From 1.2 it is possible to remotely reset the device or enable debugging mode. This can be done an MQTT request to the `car/home/debug` topic along with the following payloads:
 
@@ -108,12 +118,16 @@ From 1.2 it is possible to remotely reset the device or enable debugging mode. T
 * Remote debugging:
   MQTT publish - `car/home/debug` with payload of `true` or `false`
 
-## Version 1.3 - Automatic Home Assistant integration ##
+### Version 1.3 - Automatic Home Assistant integration ###
 
 * Added MQTT config script so that binary_sensor and reset switch is discovered automatically when it initially connects to broker.
 
 * Arduino OTA for wireless code updates.
 
-## Version 1.4 - Bug fixes ##
+### Version 1.4 - Bug fixes ###
 
 * Fixed bug with device being unavailable in Home Assistant following system restart.
+
+### Version 1.5 - Auto WiFi reconnect. ###
+
+* WiFi will now attempt to reconnect to network if it loose it post setup.
