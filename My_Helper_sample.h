@@ -45,5 +45,7 @@ boolean configDetailsSent = false;
 
 const char* payloadAvailable = "online";
 const char* payloadNotAvailable = "offline";
+const char* payloadOn = "home";
+const char* payloadOff = "away";
 
 #endif
