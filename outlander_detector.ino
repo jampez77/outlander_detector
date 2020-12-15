@@ -15,7 +15,7 @@
 //ALL CONFIG CHANGES ARE LOCATED IN My_Helper.h//
 //ALL CONFIG CHANGES ARE LOCATED IN My_Helper.h//
 
-const char* prevStatus = "";
+const char* prevStatus = "off";
 int awayCount = 0;
 
 WiFiClient espClient;

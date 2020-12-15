@@ -84,13 +84,13 @@ For a more _interesting_ integration you can take it one step further with a sen
             value_template: >
                 {% if is_state('binary_sensor.car_home_sensor', 'on') %}
                   Home
-                {% else %}
+                {% elif states('binary_sensor.car_home_sensor') == 'off' %}
                   Away
                 {% endif %}
             icon_template: >
                 {% if states('binary_sensor.car_home_sensor') == 'on' %}
                     mdi:home
-                {% else %}
+                {% elif states('binary_sensor.car_home_sensor') == 'off' %}
                     mdi:car
                 {% endif %}
 
