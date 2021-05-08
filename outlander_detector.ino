@@ -70,14 +70,14 @@ void loop() {
     setup_wifi();
   }
   
-  if (client.connected()) {
-    client.loop();
+  if (client.connected()) {   
     delay(500);
     digitalWrite(ledPin, HIGH);
     startWiFiScan();
   } else {
     connectClient();
   }
+  client.loop();
 }
 
 void setup_wifi() {
@@ -118,7 +118,6 @@ boolean connectClient() {
     if (client.connect(mqttDeviceClientId.c_str(), mqtt_user, mqtt_password, availabilityTopic, 0, true, payloadNotAvailable)) {
       // Make an announcement when connected
       Serial.println("connected");
-      client.publish(availabilityTopic, "super online?", true);
       client.publish(availabilityTopic, payloadAvailable, true);
       client.publish(stateTopic, prevStatus, true);
 
@@ -131,9 +130,6 @@ boolean connectClient() {
       Serial.println(availabilityTopic);
       Serial.println(resetCommandTopic);
       
-      while(!configDetailsSent){
-        sendConfigDetailsToHA();
-      }
       return true;
     } else {
       Serial.print("failed, rc=");
@@ -173,7 +169,7 @@ void callback(char* topic, byte* message, unsigned int length) {
 void startWiFiScan(){
   //start a scan of available WiFi networks
   Serial.println("Scanning WiFi Networks");
-  WiFi.scanNetworksAsync(scanResult);
+  scanResult(WiFi.scanNetworks());
 }
 
 void scanResult(int available_networks){
