@@ -30,7 +30,7 @@ const char* resetConfigTopic = "homeassistant/switch/garage/carHomeSensor/config
 String mqttResetDeviceClientId = "RstCHS";
 const char* mqttResetDeviceName = "Reset";
 
-const char* softwareVersion = "1.5";
+const char* softwareVersion = "1.6";
 const char* manufacturer = "NandPez";
 const char* model = "Outlander Detector";
 

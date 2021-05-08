@@ -100,13 +100,25 @@ Finally here is a really basic _lovelace_ card:
 
 ## Changelog ##
 
-### Version 1.1 - Added LED status indicator ###
+### Version 1.6 - Updated WiFi scanning. ###
 
-* Solid light = No WiFi connection
-* Flashing Light = no MQTT connection
-* No light = connection established
+Changed scanning method to prevent new scan from starting before previous has finished.
 
-Moved WiFi scan initialisation and MQTT status publish so it can be called in loop and when MQTT reconnects
+Moved `client.loop()` to end of loop in order to maintain MQTT connection.
+
+### Version 1.5 - Auto WiFi reconnect. ###
+
+* WiFi will now attempt to reconnect to network if it loose it post setup.
+
+### Version 1.4 - Bug fixes ###
+
+* Fixed bug with device being unavailable in Home Assistant following system restart.
+
+### Version 1.3 - Automatic Home Assistant integration ###
+
+* Added MQTT config script so that binary_sensor and reset switch is discovered automatically when it initially connects to broker.
+
+* Arduino OTA for wireless code updates.
 
 ### Version 1.2 - Remote Reset and Debugging Mode ###
 
@@ -118,16 +130,10 @@ From 1.2 it is possible to remotely reset the device or enable debugging mode. T
 * Remote debugging:
   MQTT publish - `car/home/debug` with payload of `true` or `false`
 
-### Version 1.3 - Automatic Home Assistant integration ###
+### Version 1.1 - Added LED status indicator ###
 
-* Added MQTT config script so that binary_sensor and reset switch is discovered automatically when it initially connects to broker.
+* Solid light = No WiFi connection
+* Flashing Light = no MQTT connection
+* No light = connection established
 
-* Arduino OTA for wireless code updates.
-
-### Version 1.4 - Bug fixes ###
-
-* Fixed bug with device being unavailable in Home Assistant following system restart.
-
-### Version 1.5 - Auto WiFi reconnect. ###
-
-* WiFi will now attempt to reconnect to network if it loose it post setup.
+Moved WiFi scan initialisation and MQTT status publish so it can be called in loop and when MQTT reconnects
