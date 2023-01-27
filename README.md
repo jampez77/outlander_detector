@@ -4,6 +4,12 @@
 
 This is essentially a WiFi scanner that will look for my car's WiFi access point and update [Home Assistant](https://home-assistant.io) with a status of 'home' or 'away'.
 
+
+Enjoying this? Help me out with a :beers: or :coffee:!
+
+[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/jampez77)
+
+
 ## Prerequisites ##
 
 **Software**
